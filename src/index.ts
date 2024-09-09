@@ -2,16 +2,43 @@ import express, { Application, Request, Response } from 'express';
 import bodyParser from 'body-parser';
 const app: Application = express();
 const PORT = 3000;
+const cors = require('cors');
 
 // setup based on: https://www.youtube.com/watch?v=nawJwaPW1yI
 // Dockerfile.dev used to simplify running locally with the compose file (handles last 3 lines of base Dockerfile)
 // The prod version yml includes the build step
+
+// 👇️ CORS https://bobbyhadz.com/blog/react-axios-network-error-stack-trace
+app.use(cors());
+
+app.use(function(req, res, next) {
+    res.header('Access-Control-Allow-Origin', 'http://localhost:5173'); // for register local running endpoint
+    // res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.header(
+      'Access-Control-Allow-Headers',
+      'Origin, X-Requested-With, Content-Type, Accept',
+    );
+    res.header(
+        'Access-Control-Allow-Methods',
+        'Origin, X-Requested-With, Content-Type, Accept',
+      );
+      res.header(
+        'Access-Control-Allow-Methods',
+        'Origin, X-Requested-With, Content-Type, Accept',
+      );
+      res.header(
+        'Access-Control-Allow-Methods',
+        'Origin, X-Requested-With, Content-Type, Accept',
+      );
+    next();
+});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get('/', async (req: Request, res: Response): Promise<Response> => {
   return res.status(200).send({
+    value: 'test get value',
     message: 'Hello World Updated!',
   });
 });
@@ -19,6 +46,7 @@ app.get('/', async (req: Request, res: Response): Promise<Response> => {
 app.post('/post', async (req: Request, res: Response): Promise<Response> => {
   console.log(req.body);
   return res.status(200).send({
+    value: 'test post value',
     message: 'Hello World from post !',
   });
 });
