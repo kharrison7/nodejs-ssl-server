@@ -3,6 +3,10 @@ import bodyParser from 'body-parser';
 const app: Application = express();
 const PORT = 3000;
 const cors = require('cors');
+const hostname = '127.0.0.1'; // Your server ip address
+
+// setup based on: https://youtu.be/FTNKDgN4CGI?t=244
+const version = '1.0.0';
 
 // setup based on: https://www.youtube.com/watch?v=nawJwaPW1yI
 // Dockerfile.dev used to simplify running locally with the compose file (handles last 3 lines of base Dockerfile)
@@ -50,6 +54,13 @@ app.post('/post', async (req: Request, res: Response): Promise<Response> => {
     message: 'Hello World from post !',
   });
 });
+
+// Health check
+app.get('/health', (req, res) => {    
+  res.sendStatus(200);
+  console.log(`[Version ${version}]: New request => http://${hostname}:${PORT}`+req.url);
+})
+
 
 try {
   app.listen(PORT, (): void => {
