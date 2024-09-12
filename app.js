@@ -5,15 +5,14 @@ const port = 3000;
 const cors = require('cors');
 
 // setup based on: https://youtu.be/FTNKDgN4CGI?t=244
-const version = '1.0.0';
+const version = '1.3.0';
 
+// Original page provided
 // app.get('/', (req, res) => {
 //     // set response content    
 //     res.sendFile(__dirname + "/html/index.html"); 
 //     console.log(`[Version ${version}]: New request => http://${hostname}:${port}`+req.url);
-
 // })
-
 
 // 👇️ CORS https://bobbyhadz.com/blog/react-axios-network-error-stack-trace
 app.use(cors());
@@ -45,7 +44,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get('/', async (req, res) => {
   return res.status(200).send({
-    value: 'test get value',
+    value: 'test get value 9-12 v3',
     message: 'Hello World Updated!',
   });
 });
@@ -59,3 +58,19 @@ app.get('/health', (req, res) => {
 app.listen(port, () => {
     console.log(`[Version ${version}]: Server running at http://${hostname}:${port}/`);
 })
+
+app.post('/post', async (req, res) => {
+  console.log(req.body);
+  return res.status(200).send({
+    value: req.body,
+    message: 'post success',
+  });
+});
+
+try {
+  app.listen(PORT, () => {
+    console.log(`Connected successfully on port ${PORT}`);
+  });
+} catch (error) {
+  console.error(`Error occured: ${error.message}`);
+}
