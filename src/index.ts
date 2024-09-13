@@ -37,15 +37,21 @@ app.use(function(req, res, next) {
     next();
 });
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// app.use(bodyParser.json());
+// app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get('/', async (req: Request, res: Response): Promise<Response> => {
   return res.status(200).send({
-    value: 'test get value',
+    value: 'test get value 2.1 in index.ts',
     message: 'Hello World Updated!',
   });
 });
+
+// app.get('/', async (req: Request, res: Response): Promise<any> => {
+//     // set response content    
+//     res.sendFile(__dirname + "../html/index.html"); 
+//     console.log(`[Version ${version}]: New request => http://${hostname}:${PORT}`+req.url);
+// })
 
 app.post('/post', async (req: Request, res: Response): Promise<Response> => {
   console.log(req.body);

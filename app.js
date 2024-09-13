@@ -39,12 +39,12 @@ app.use(function(req, res, next) {
     next();
 });
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+// app.use(bodyParser.json());
+// app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get('/', async (req, res) => {
   return res.status(200).send({
-    value: 'test get value 9-12 v3',
+    value: 'test get value 9-12 v3 in app.js',
     message: 'Hello World Updated!',
   });
 });
