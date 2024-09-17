@@ -45,7 +45,14 @@ app.use(function(req, res, next) {
 app.get('/', async (req, res) => {
   return res.status(200).send({
     value: 'test get value 9-12 v3 in app.js',
-    message: 'Hello World Updated!',
+    message: 'Updated!',
+  });
+});
+
+app.get('/items', async (req, res) => {
+  return res.status(200).send({
+    value: 'test get value for items',
+    message: 'Updated!',
   });
 });
 
