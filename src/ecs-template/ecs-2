@@ -1,0 +1,329 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS Cluster and Service using Fargate and ECR Image
+
+Parameters:
+  BaseECRImageName:
+    Type: String
+    Default: ecr-9-12
+  VPCId:
+    Type: String
+    Default: vpc-0e050bd47d6aa5448
+  Subnet1:
+    Type: String
+    Default: subnet-0ba2f71e6f21019d1
+  Subnet2:
+    Type: String
+    Default: subnet-08c457dfacd8ab001
+  SecurityGroup:
+    Type: String
+    Default: sg-060c5c2866a559b0f
+  CognitoUserPoolName:
+    Type: String
+    Description: The name of the User Pool
+    Default: "JRS-Register-Dev"
+  UserPoolClientName:
+    Type: String
+    Description: The name of the User Pool Client
+    Default: "JRS-Register-Dev"
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties: 
+      ClusterName: TestNodeCluster-v8
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ecsTaskExecutionRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - ecr:*
+                  - cognito-idp:*
+                Resource: '*'
+
+  # Add CloudWatch Log Group to ensure it exists before the ECS task runs
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/test-node-service-autoscaling-v8
+      RetentionInDays: 7  # Set retention based on your needs
+
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: test-node-task
+      Cpu: '512'  # Update based on your requirement
+      Memory: '1024'  # Update based on your requirement
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: test-node-container-v8
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${BaseECRImageName}:latest"
+          Essential: true
+          PortMappings:
+            - ContainerPort: 3000
+          Memory: 512
+          Cpu: 256
+          Environment:   # Add environment variables if needed
+            - Name: NODE_ENV
+              Value: production
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/test-node-service-autoscaling-v8
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ECSCluster
+      - ECSLoadBalancer
+      - ECSLoadBalancerListener
+      - CloudWatchLogGroup  # Ensure log group is created before service starts
+    Properties:
+      ServiceName: test-node-service-v8
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref ECSTaskDefinition
+      DesiredCount: 2  # Number of containers to run
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref Subnet1
+            - !Ref Subnet2
+          SecurityGroups:
+            - !Ref SecurityGroup
+      LoadBalancers:
+        - ContainerName: test-node-container-v8
+          ContainerPort: 3000
+          TargetGroupArn: !Ref ECSLoadBalancerTargetGroup
+
+  ECSLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: test-node-load-balancer-v8
+      Scheme: internet-facing
+      Subnets:
+        - !Ref Subnet1
+        - !Ref Subnet2
+      SecurityGroups:
+        - !Ref SecurityGroup
+      Type: application
+
+  ECSLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ECSLoadBalancerTargetGroup
+      LoadBalancerArn: !Ref ECSLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  ECSLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: test-node-target-group-v8
+      Port: 3000
+      Protocol: HTTP
+      VpcId: !Ref VPCId
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      TargetType: ip
+
+##########################################
+# Auto Scaling Resources for ECS Service #
+##########################################
+
+  ECSServiceScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn:
+      - ECSService  # Ensure the service is created first
+    Properties: 
+      MaxCapacity: 2  # Maximum number of containers to scale to
+      MinCapacity: 1  # Minimum number of containers
+      ResourceId: !Sub "service/TestNodeCluster-v8/test-node-service-v8"  # This is set manually as the ARN causes issues
+      RoleARN: !GetAtt ECSTaskExecutionRole.Arn
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  ECSServiceScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    DependsOn:
+      - ECSServiceScalingTarget  # Ensure the scaling target exists before the policy
+    Properties:
+      PolicyName: ECSAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ResourceId: !Sub "service/TestNodeCluster-v8/test-node-service-v8"  # Ensure correct resource format
+      ScalableDimension: ecs:service:DesiredCount  # Correct scalable dimension to match ECSServiceScalingTarget
+      ServiceNamespace: ecs  # Correct namespace for ECS
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        TargetValue: 50.0
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+
+##########################################
+# EventBridge Rule and Lambda Function   #
+##########################################
+
+  ECRUpdateRule:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - "aws.ecr"
+        detail-type:
+          - "ECR Image Action"
+        detail:
+          actionType:
+            - "PUSH"
+          result:
+            - "SUCCESS"
+      Targets:
+        - Arn: !GetAtt ECSUpdateLambdaFunction.Arn
+          Id: "ECRUpdateLambdaTarget"
+
+  ECSUpdateLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaECSUpdatePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:UpdateService
+                  - ecs:DescribeServices
+                  - ecs:RegisterTaskDefinition
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  ECSUpdateLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt ECSUpdateLambdaExecutionRole.Arn
+      Runtime: python3.9
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          
+          ecs_client = boto3.client('ecs')
+
+          def handler(event, context):
+              cluster_name = "TestNodeCluster-v8"
+              service_name = "test-node-service-autoscaling-v8"
+              
+              response = ecs_client.describe_task_definition(
+                  taskDefinition=service_name
+              )
+              
+             # Register a new task definition with the updated image
+              container_definitions = response['taskDefinition']['containerDefinitions']
+              for container in container_definitions:
+                  if container['name'] == 'test-node-container':
+                      container['image'] = f"{event['account']}.dkr.ecr.{event['region']}.amazonaws.com/{event['detail']['repositoryName']}:latest"
+              
+              new_task_def = ecs_client.register_task_definition(
+                  family=response['taskDefinition']['family'],
+                  containerDefinitions=container_definitions,
+                  cpu=response['taskDefinition']['cpu'],
+                  memory=response['taskDefinition']['memory'],
+                  networkMode=response['taskDefinition']['networkMode'],
+                  requiresCompatibilities=response['taskDefinition']['requiresCompatibilities']
+              )
+
+              # Update the ECS service to use the new task definition
+              ecs_client.update_service(
+                  cluster=cluster_name,
+                  service=service_name,
+                  taskDefinition=new_task_def['taskDefinition']['taskDefinitionArn']
+              )
+      Timeout: 30
+
+  ##########################################
+  # Cognito Resources                      #
+  ##########################################
+
+  UserPool:
+    Type: "AWS::Cognito::UserPool"
+    Properties:
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UserPoolName: !Ref CognitoUserPoolName
+      MfaConfiguration: "OFF"
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: True
+          RequireNumbers: True
+          RequireSymbols: false
+          RequireUppercase: True
+      UsernameAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: False
+
+  UserPoolClient:
+    Type: "AWS::Cognito::UserPoolClient"
+    Properties:
+      ClientName: !Ref UserPoolClientName
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_CUSTOM_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      UserPoolId: !Ref UserPool
+
+Outputs:
+  ECSServiceName:
+    Description: Name of the ECS Service
+    Value: !Ref ECSService
+  LoadBalancerDNS:
+    Description: DNS Name of the Load Balancer
+    Value: !GetAtt ECSLoadBalancer.DNSName

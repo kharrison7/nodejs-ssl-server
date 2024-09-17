@@ -3,6 +3,8 @@ const app = express();
 const hostname = '127.0.0.1'; // Your server ip address
 const port = 3000;
 const cors = require('cors');
+import { items } from './src/items';
+
 
 // setup based on: https://youtu.be/FTNKDgN4CGI?t=244
 const version = '1.3.0';
@@ -44,15 +46,23 @@ app.use(function(req, res, next) {
 
 app.get('/', async (req, res) => {
   return res.status(200).send({
-    value: 'test get value 9-12 v3 in app.js',
-    message: 'Updated!',
+    value: 'test get value 9-17 in app.js',
+    message: 'can get',
   });
 });
 
+app.get('/equipment', async (req, res) => {
+  return res.status(200).send({
+    value: 'test get value for equipment',
+    message: 'can get equipment!',
+  });
+});
+
+
 app.get('/items', async (req, res) => {
   return res.status(200).send({
-    value: 'test get value for items',
-    message: 'Updated!',
+    value: items,
+    message: 'can get items!',
   });
 });
 
