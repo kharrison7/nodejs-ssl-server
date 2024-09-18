@@ -11,8 +11,7 @@ const version = '1.3.0';
 app.use(cors());
 
 app.use(function(req, res, next) {
-    res.header('Access-Control-Allow-Origin', 'http://localhost:5173'); // for register local running endpoint
-    // res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.header('Access-Control-Allow-Origin', 'http://localhost:5173'); // for local running endpoint
     res.header(
       'Access-Control-Allow-Headers',
       'Origin, X-Requested-With, Content-Type, Accept',
@@ -31,10 +30,6 @@ app.use(function(req, res, next) {
       );
     next();
 });
-
-// // TODO: can setup bodyParser in container installation:
-// app.use(bodyParser.json());
-// app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get('/', async (req, res) => {
   return res.status(200).send({

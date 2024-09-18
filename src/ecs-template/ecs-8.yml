@@ -20,11 +20,11 @@ Parameters:
   CognitoUserPoolName:
     Type: String
     Description: The name of the User Pool
-    Default: "JRS-Register-Dev"
+    Default: "testing-dev"
   UserPoolClientName:
     Type: String
     Description: The name of the User Pool Client
-    Default: "JRS-Register-Dev"
+    Default: "testing-dev"
 
 Resources:
   ECSCluster:
