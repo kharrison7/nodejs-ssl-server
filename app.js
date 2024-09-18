@@ -89,7 +89,7 @@ const items =[
       image: 'blue-band.jpg',
       price: 79,
       category: 'Fitness',
-      quantity: 2,
+      quantity: 3,
       inventoryStatus: 'LOWSTOCK',
       rating: 3
   }
