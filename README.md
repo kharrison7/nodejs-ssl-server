@@ -1,251 +1,337 @@
-# nodejs-ssl-server
 
-How to deploy nodejs app to AWS EC2 Ubuntu 22 Server with free SSL and Nginx reverse proxy
 
-<a href="https://www.buymeacoffee.com/scaleupsaas"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=scaleupsaas&button_colour=BD5FFF&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" /></a>
+AWS Project - CI CD Pipeline to AWS ECS for Docker App + CodeCommit + CodeBuild + CodeDeploy
+Here's the [YouTube Video](https://youtu.be/knFabwOn1JE).
 
-## Installation instructions
+## Installation
 
-### 1. Launch amazon ubuntu server in aws + Attach Elastic IP to the new instance
+Follow next steps in order to install nodejs app and create a dockerimage
 
-### 2. ssh to ubuntu to install packages
+### Step 1 - Git clone 
 
-```sh
-ssh -i <key.pem> ubuntu@<ip-address> -v
+```
+git clone [https://github.com/saasscaleup/nodejs-ssl-server.git](https://github.com/kharrison7/nodejs-ssl-server.git)
 ```
 
-### 3. Update and Upgrade linux machine and install node and nvm 
-
-```sh
-sudo apt update
 ```
-
-```sh
-sudo apt upgrade
-```
-
-```sh
-sudo apt install -y git htop wget
-```
-
-#### 3.1 install node
-
-To **install** or **update** nvm, you should run the [install script][2]. To do that, you may either download and run the script manually, or use the following cURL or Wget command:
-```sh
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-```
-Or
-```sh
-wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-```
-
-Running either of the above commands downloads a script and runs it. The script clones the nvm repository to `~/.nvm`, and attempts to add the source lines from the snippet below to the correct profile file (`~/.bash_profile`, `~/.zshrc`, `~/.profile`, or `~/.bashrc`).
-
-#### 3.2 Copy & Past (each line separately)
-<a id="profile_snippet"></a>
-```sh
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-```
-
-#### 3.3 Verify that nvm has been installed
-
-```sh
-nvm --version
-```
-
-#### 3.4 Install node
-
-```sh
-nvm install --lts # Latest stable node js server version
-```
-
-#### 3.5 Check nodejs installed
-```sh
-node --version
-```
-
-#### 3.6 Check npm installed
-```sh
-npm -v
-```
-
-### 4. Clone nodejs-ssl-server repository
-
-```sh
-cd /home/ubuntu
-```
-
-```sh
-git clone https://github.com/saasscaleup/nodejs-ssl-server.git
-```
-
-### 5. Run node app.js  (Make sure everything working)
-
-```sh
 cd nodejs-ssl-server
 ```
 
-```sh
-npm install
+```
+git checkout nodejs-docker-aws-ecs
 ```
 
-```sh
-node app.js
+### Step 2 - Build and run docker container
+
+```
+docker build -t nodejs-server-demo .
 ```
 
-### 6. Install pm2
-```sh
-npm install -g pm2 # may require sudo
 ```
-
-### 7. Starting the app with pm2 (Run nodejs in background and when server restart)
-```sh
-pm2 start app.js --name=nodejs-ssl-server
+docker run -dp 3000:3000 nodejs-server-demo
 ```
-```sh
-pm2 save     # saves the running processes
-                  # if not saved, pm2 will forget
-                  # the running apps on next boot
-```
-
-#### 7.1 IMPORTANT: If you want pm2 to start on system boot
-```sh
-pm2 startup # starts pm2 on computer boot
-```
-
-### 8. FREE SSL - Install Nginx web server
-
-```sh
-sudo apt install nginx
-```
-
-```sh
-sudo nano /etc/nginx/sites-available/default
-```
-
-#### Add the following to the location part of the server block
-
-```sh
-    server_name yourdomain.com www.yourdomain.com;
-
-    location / {
-        proxy_pass http://localhost:5000; #whatever port your app runs on
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-```
-
-##### Check NGINX config
-```sh
-sudo nginx -t
-```
-
-##### Restart NGINX
-```sh
-sudo service nginx restart
-```
-
-#### You should now be able to visit your IP with no port (port 80) and see your app. Now let's add a domain
-
-### 9 Add domain in goDaddy.com
-If you have domain, you can add A record to your EC2 instance IP with a new subdomain as I'm going to show you next
-
-#### 9.1 Check that Port 80 redirect to Nodejs server
-
-### 10 Installing Free SSL
-
-#### 10.1 Installing Certbot
-
-```sh
-sudo snap install core; sudo snap refresh core
-```
-
-```sh
-sudo apt remove certbot
-```
-
-```sh
-sudo snap install --classic certbot
-```
-
-```sh
-sudo ln -s /snap/bin/certbot /usr/bin/certbot
-```
-
-#### 10.2 Confirming Nginx’s Configuration
-```sh
-sudo nano /etc/nginx/sites-available/default
-```
-
-let edit this line:
-```sh
-...
-server_name example.com www.example.com;
-...
-```
-
-```sh
-sudo nginx -t
-```
-
-```sh
-sudo systemctl reload nginx
-```
-
-#### 10.3 Obtaining an FREE SSL Certificate
-```sh
-sudo certbot --nginx -d app.example.com 
-```
-
-Output:
-```
-IMPORTANT NOTES:
-Successfully received certificate.
-Certificate is saved at: /etc/letsencrypt/live/your_domain/fullchain.pem
-Key is saved at: /etc/letsencrypt/live/your_domain/privkey.pem
-This certificate expires on 2022-06-01.
-These files will be updated when the certificate renews.
-Certbot has set up a scheduled task to automatically renew this certificate in the background.
-
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-If you like Certbot, please consider supporting our work by:
-* Donating to ISRG / Let's Encrypt: https://letsencrypt.org/donate
-* Donating to EFF: https://eff.org/donate-le
-```
-
-#### 10.4 Verifying Certbot Auto-Renewal
-```sh
-sudo systemctl status snap.certbot.renew.service
-```
-Output:
-```
-○ snap.certbot.renew.service - Service for snap application certbot.renew
-     Loaded: loaded (/etc/systemd/system/snap.certbot.renew.service; static)
-     Active: inactive (dead)
-TriggeredBy: ● snap.certbot.renew.timer
-```
-
-To test the renewal process, you can do a dry run with certbot:
-
-```sh
-sudo certbot renew --dry-run
-```
-
-### 11. Visit your website HTTPS://<your website>
-  Enjoy Your free Nodejs server with Free SSL :)
   
-  
-## Support 🙏😃
-  
- If you Like the tutorial and you want to support my channel so I will keep releasing amzing content that will turn you to a desirable Developer with Amazing Cloud skills... I will realy appricite if you:
+
+Repository Review: (PR)
+
+Back End:
+https://github.com/kharrison7/nodejs-ssl-server/pull/1
+
+
+Impact
+
+This work:
+
+1: Runs through all the work needed to setup an ECS instance with a docker image manually.
+
+2: Generates a Template yml file that can be used to deploy an EC2 Cluster with ECS instances running images from a specific ECR repo.
+
+3: Compares the EC2/ECS setup vs Lambda setup.
+
+Abstract:
+
+HOW TO GET THE DOCKER IMAGE IN ECR THEN ECS:
+
+Overview:
+I. create the ECR using the following tutorial:
+https://faun.pub/deploying-docker-images-to-ecs-b43058dc0456 
+II. Then TAG the docker image name to match the exact name as the ECR repo URI
+III. Then login in terminal with aws cli:
+aws ecr get-login-password | docker login --username AWS --password-stdin 1<ECR repo uri #>.dkr.ecr.us-east-1.amazonaws.com
+IV. Then push up:
+docker push <amazon-user-id-from-profile>.dkr.ecr.us-east-1.amazonaws.com/<ecr-repo-name>
+
+HOW TO GET THE DOCKER IMAGE FROM ECR INTO ECS:
+
+Manually:
+
+I. Create a new task definition:
+https://us-east-1.console.aws.amazon.com/ecs/v2/create-task-definition?region=us-east-1
+https://faun.pub/deploying-docker-images-to-ecs-b43058dc0456 
+II. For Container Image URI, use the URI from the ECR Instance
+III. Hit Create and the cluster should deploy in a bit (typically 1 hour, range 45 min to 2 hours on create).
+
+Template (automated):
+
+I. Create a new stack using the template in CloudFormation:
+
+CloudFormation (amazon.com)
+
+Template:
+
+Understanding ECS:
+
+ECS: Amazon Elastic Container Service is a fully managed container orchestration service used to deploy, manage, and scale containerized applications. For our purposes the container images are stored in ECR.
+
+What is Amazon Elastic Container Service? - Amazon Elastic Container Service
+
+ECR: Amazon Elastic Container Registry is an AWS managed container image registry service. This is similar to a github repository but for docker images.
+
+What is Amazon Elastic Container Registry? - Amazon ECR
+
+EC2: Amazon Elastic Compute Cloud is a virtual cloud space that can host instances as a set or cluster. (called EC2 because of the 2 'C’s).
+
+What is Amazon EC2? - Amazon Elastic Compute Cloud
+
+The key takeaway is that a dev works locally on a docker image. That image is then pushed to ECR (the image repository). From there, the image in the ECR can be used as the application in an ECS instance (a fully running version of that image in the cloud). The ECR instance can be hosted in a EC2 cluster for scalability (to run multiple instances in parallel, updates, etc).
+
+Docker Setup:
+
+1: To get working with docker, run the docker application and use the following commands as needed, to build, tag, and push to the ECR.
+
+docker build -t <app-name> .
+
+docker tag <app-name> <amazon-user-id-from-profile>.dkr.ecr.us-east-1.amazonaws.com/<ecr-repo-name> // ← the user account number is accessible in the top right menu
+
+docker push <amazon-user-id-from-profile>.dkr.ecr.us-east-1.amazonaws.com/<ecr-repo-name>
+
+2: Additional helpful docker commands include:
+
+docker run -d -p 3000:3000 <amazon-user-id-from-profile>.dkr.ecr.us-east-1.amazonaws.com/<ecr-repo-name>
+
+docker images
+
+docker ps -a // ← docker process status, identical to docker container ls
+
+3: Once the docker image is pushed up from step one, the ECR repository should show the updated docker image.
+
+4: To run the container locally, build the docker file and run: (note the host/name/repo can be changed)
+
+docker run -d -p 3000:3000 <amazon-user-id-from-profile>.dkr.ecr.us-east-1.amazonaws.com/<ecr-repo-name>:latest
+
+Running locally and hitting the local endpoint
+
+
+
+VPC Inbound rule security setup - not mentioned in the demos online → This is an important step for TROUBLESHOOTING! If everything else is green check the VPC settings
+
+II. Template Setup
+
+1: To create a new Cluster: Go to CloudFormation:
+
+CloudFormation (amazon.com)
+
+ a: create stack
+
+ b: upload template
+
+Base Template: (YAML file): v8 - current version
+
+Base Template (Original Version):
+
+**Note: for the example template search for -v and then update to a new number if deploying a cluster where an existing cluster exists (ex. -v8 to -v9). This prevents issues with name spaces.
+
+c: continue hitting ‘next’ until the cloud formation:
+
+Creating a new cluster based on the ECR repo
+
+CloudFormation Composer Overview based on the Template
+
+2: To edit the Cluster: Go to CloudFormation:
+https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks?filteringText=&filteringStatus=active&viewNested=true
+
+ a: select stack action
+ b: create changes set for current stack
+ c: replace existing template
+ d: upload template
+ e: upload ecs-2.yml file (or desired template)
+ f: Hit next (can change params as needed)
+ g: Hit next
+
+3: This Implements a change set, CloudFormation computes what changes will be made:
+
+Execute Change Set and defaults to deploy in region you are in unless otherwise specified
+
+At this point the endpoint should be accessible.
+
+Template Cluster Setup using existing ECR Repository
+
+Deployed cluster with endpoint generated from the template
+
+To see the output go to: (see above screencapture)
+1: ECS
+2: Cluster
+3: <Cluster Name Link>
+4: Services
+5: 'View Load Balancer' button
+6: Select link below DNS name and paste in URL (be sure to use HTTP not HTTPS for the demo).
+
+To see changes to your ECS instances (use the commands from the Docker Setup):
+
+1: Commit the changes to your branch (normal git commands)
+
+2: The following commands are needed, to build, tag, and push to the ECR.
+
+docker build -t <app-name> .
+
+docker tag <app-name> <amazon-user-id-from-profile>.dkr.ecr.us-east-1.amazonaws.com/<ecr-repo-name> // ← the user account number is accessible in the top right menu
+
+docker push <amazon-user-id-from-profile>.dkr.ecr.us-east-1.amazonaws.com/<ecr-repo-name>
+
+3: Wait and… that is it. (Deployment took around 10-15 minutes)
+
+
+---
+
+Note: Pricing
+
+More details below, but in general ECS/EC2 is more expensive the Lambda functions. 
+
+Price Optimization: Cost Management Console (amazon.com)
+
+EC2 Pricing: https://docs.aws.amazon.com/whitepapers/latest/how-aws-pricing-works/amazon-ec2.html  
+
+
+Note: EC2 Key Links:
+
+EC2 Intro Docs:
+https://docs.aws.amazon.com/ec2/latest/devguide/ec2-api-intro.html 
+
+Instance types
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html 
+
+EC2 Pricing:
+https://docs.aws.amazon.com/whitepapers/latest/how-aws-pricing-works/amazon-ec2.html 
+
+VPC:
+Amazon Virtual Private Cloud (Amazon VPC) is a service that allows you to define a logically isolated virtual network within the AWS cloud1234. With VPC, you can create your own network space and control how your network and Amazon EC2 resources are exposed to the Internet.
+
+
+Key Links:
+
+AMZN LINKS:
+EC2 Instances:
+https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#Instances:instanceState=running
+Amazon Elastic Container Service (with Task Definitions):
+https://us-east-1.console.aws.amazon.com/ecs/v2/clusters/nodejs-server-demo-cluster-setup/infrastructure?region=us-east-1
+Amazon Elastic Container Registry:
+https://us-east-1.console.aws.amazon.com/ecr/private-registry/repositories?region=us-east-1
+
+ECS Repos:
+https://us-east-1.console.aws.amazon.com/ecr/private-registry/repositories?region=us-east-1
+
+ECS Clusters:
+https://us-east-1.console.aws.amazon.com/ecs/v2/clusters?region=us-east-1
+
+EC2 Instances:
+https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#Instances:instanceState=running
+
+VPC Security Groups:
+https://us-east-1.console.aws.amazon.com/vpcconsole/home?region=us-east-1#SecurityGroups:
+
+IAM Dashboard: (for setting up the ecsTaskExecutionRole in Roles)
+https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/home
+
+AWS Guide:
+https://docs.aws.amazon.com/AmazonECS/latest/developerguide/create-container-image.html 
+
+ECS Memory Provisioning Fix:
+https://stackoverflow.com/questions/63032953/aws-ecs-deployment-insufficient-memory 
+
+--
+
+Tutorials:
+
+ECS Tutorial (Basic):
+
+Gentle Introduction to How AWS ECS Works with Example Tutorial | by Tung Nguyen | BoltOps | Medium
+
+
+Docker to Localhost (Tutorial):
+
+
+
+https://github.com/saasscaleup/nodejs-ssl-server/tree/nodejs-docker-aws-ecs 
+
+Node JS Docker to Localhost:
+
+
+Key Commands from the tutorials:
+
+npm install -g ts-node@latest
+
+npm install -g ts-node@latest
+npm i --save-dev ts-node-dev@latest
+npm install cors
+
+npm run dev
+curl localhost:3000
+{"message":"<message here"}
+
+to run with docker:
+docker compose up
+[+] Building 53.9s (10/10) FINISHED
+express-typescript-docker  | Connected successfully on port 3000
+
+turn on docker
+docker build -t nodejs-server-demo .
+docker run -dp 3000:3000 nodejs-server-demo 
+
+
+
+to build the value return with cors from src index.ts
+docker build . -t express-typescript-docker
+docker run -p 3000:3000 -d express-typescript-docker:latest
+
+Screenshots (see above)
+
+---
+
+---
+
+# nodejs-docker-aws-ecs
+
+AWS Project - CI CD Pipeline to AWS ECS for Docker App + CodeCommit + CodeBuild + CodeDeploy
+Here's the [YouTube Video](https://youtu.be/knFabwOn1JE).
+
+## Installation
+
+Follow next steps in order to install nodejs app and create a dockerimage
+
+### Step 1 - Git clone 
+
+```
+git clone https://github.com/saasscaleup/nodejs-ssl-server.git
+```
+
+```
+cd nodejs-ssl-server
+```
+
+```
+git checkout nodejs-docker-aws-ecs
+```
+
+### Step 2 - Build and run docker container
+
+```
+docker build -t nodejs-server-demo .
+```
+
+```
+docker run -dp 3000:3000 nodejs-server-demo
+```
  
- 1. Subscribe to My youtube channel and leave a comment: http://www.youtube.com/@ScaleUpSaaS?sub_confirmation=1
- 2. Buy me A coffee ❤️ : https://www.buymeacoffee.com/scaleupsaas
 
 Thanks for your support :)
 
