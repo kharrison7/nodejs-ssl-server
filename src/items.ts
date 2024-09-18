@@ -1,3 +1,4 @@
+// TODO: setup items pass in to index get for testing. Eventually replace with mongo db connection and query.
 export const items =[
     {
         id: '1000',

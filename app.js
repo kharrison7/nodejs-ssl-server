@@ -7,13 +7,6 @@ const cors = require('cors');
 // setup based on: https://youtu.be/FTNKDgN4CGI?t=244
 const version = '1.3.0';
 
-// Original page provided
-// app.get('/', (req, res) => {
-//     // set response content    
-//     res.sendFile(__dirname + "/html/index.html"); 
-//     console.log(`[Version ${version}]: New request => http://${hostname}:${port}`+req.url);
-// })
-
 // 👇️ CORS https://bobbyhadz.com/blog/react-axios-network-error-stack-trace
 app.use(cors());
 
@@ -39,6 +32,7 @@ app.use(function(req, res, next) {
     next();
 });
 
+// // TODO: can setup bodyParser in container installation:
 // app.use(bodyParser.json());
 // app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -49,14 +43,27 @@ app.get('/', async (req, res) => {
   });
 });
 
-app.get('/equipment', async (req, res) => {
+app.get('/equipment/:id', async (req, res) => {
+  console.log('hit equipment');
+  console.log(req.params);
+  console.log(req.params.id);
+
+  const url = require('url');
+  const url_parts = url.parse(req.url, true);
+  const query = url_parts.query;
+
+  console.log('url_parts', url_parts);
+  console.log('query', query);
+
   return res.status(200).send({
-    value: 'test get value for equipment',
+    value: query,
+    reqParams: req.params,
+    url,
     message: 'can get equipment!',
   });
 });
 
-const items =[
+const items = [
   {
       id: '1000',
       code: 'f230fh0g3',
@@ -92,15 +99,58 @@ const items =[
       quantity: 3,
       inventoryStatus: 'LOWSTOCK',
       rating: 3
-  }
+  },
+  {
+    id: '1005',
+    code: 'av2231fwg',
+    name: 'Brown Purse',
+    description: 'Product Description',
+    image: 'brown-purse.jpg',
+    price: 120,
+    category: 'Accessories',
+    quantity: 0,
+    inventoryStatus: 'OUTOFSTOCK',
+    rating: 4
+  },
+  // {
+  //     id: '1026',
+  //     code: 'bib36pfvm',
+  //     name: 'Chakra Bracelet',
+  //     description: 'Product Description',
+  //     image: 'chakra-bracelet.jpg',
+  //     price: 32,
+  //     category: 'Accessories',
+  //     quantity: 5,
+  //     inventoryStatus: 'LOWSTOCK',
+  //     rating: 3
+  // },
+  // {
+  //   id: '1099',
+  //   code: 'bib36pfvm',
+  //   name: 'Chakra Bracelet Large',
+  //   description: 'Product Description',
+  //   image: 'chakra-bracelet.jpg',
+  //   price: 32,
+  //   category: 'Accessories',
+  //   quantity: 5,
+  //   inventoryStatus: 'LOWSTOCK',
+  //   rating: 3
+  // }
 ];
 
 app.get('/items', async (req, res) => {
   return res.status(200).send({
     value: items,
-    message: 'can get items!',
+    message: 'can get items after update 10:00am!',
   });
 });
+
+// app.get('/location', async (req, res) => {
+//   return res.status(200).send({
+//     value: items,
+//     message: 'can get items!',
+//   });
+// });
 
 // Health check
 app.get('/health', (req, res) => {    
