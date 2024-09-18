@@ -10,7 +10,7 @@ Follow next steps in order to install nodejs app and create a dockerimage
 ### Step 1 - Git clone 
 
 ```
-git clone https://github.com/saasscaleup/nodejs-ssl-server.git
+git clone [https://github.com/saasscaleup/nodejs-ssl-server.git](https://github.com/kharrison7/nodejs-ssl-server.git)
 ```
 
 ```
@@ -35,25 +35,12 @@ docker run -dp 3000:3000 nodejs-server-demo
 Repository Review: (PR)
 
 Back End:
-
-
-Manual Steps and Scripts
-
-None
-
-Front End Changes
-
-None
-
-Migration Changes
-
-None
-
+https://github.com/kharrison7/nodejs-ssl-server/pull/1
 
 
 Impact
 
-This story:
+This work:
 
 1: Runs through all the work needed to setup an ECS instance with a docker image manually.
 
