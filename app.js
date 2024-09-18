@@ -107,30 +107,30 @@ const items = [
     inventoryStatus: 'OUTOFSTOCK',
     rating: 4
   },
-  // {
-  //     id: '1026',
-  //     code: 'bib36pfvm',
-  //     name: 'Chakra Bracelet',
-  //     description: 'Product Description',
-  //     image: 'chakra-bracelet.jpg',
-  //     price: 32,
-  //     category: 'Accessories',
-  //     quantity: 5,
-  //     inventoryStatus: 'LOWSTOCK',
-  //     rating: 3
-  // },
-  // {
-  //   id: '1099',
-  //   code: 'bib36pfvm',
-  //   name: 'Chakra Bracelet Large',
-  //   description: 'Product Description',
-  //   image: 'chakra-bracelet.jpg',
-  //   price: 32,
-  //   category: 'Accessories',
-  //   quantity: 5,
-  //   inventoryStatus: 'LOWSTOCK',
-  //   rating: 3
-  // }
+  {
+      id: '1026',
+      code: 'bib36pfvm',
+      name: 'Chakra Bracelet',
+      description: 'Product Description',
+      image: 'chakra-bracelet.jpg',
+      price: 32,
+      category: 'Accessories',
+      quantity: 5,
+      inventoryStatus: 'LOWSTOCK',
+      rating: 3
+  },
+  {
+    id: '1099',
+    code: 'bib36pfvm',
+    name: 'Chakra Bracelet Large',
+    description: 'Product Description',
+    image: 'chakra-bracelet.jpg',
+    price: 32,
+    category: 'Accessories',
+    quantity: 5,
+    inventoryStatus: 'LOWSTOCK',
+    rating: 3
+  }
 ];
 
 app.get('/items', async (req, res) => {
@@ -140,12 +140,12 @@ app.get('/items', async (req, res) => {
   });
 });
 
-// app.get('/location', async (req, res) => {
-//   return res.status(200).send({
-//     value: items,
-//     message: 'can get items!',
-//   });
-// });
+app.get('/location', async (req, res) => {
+  return res.status(200).send({
+    value: items,
+    message: 'can get items!',
+  });
+});
 
 // Health check
 app.get('/health', (req, res) => {    
