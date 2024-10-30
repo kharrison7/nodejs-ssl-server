@@ -82,7 +82,7 @@ app.post('/login', async (req, res) => {
 });
 // JRS-10145 - AWS Cognito Setup for Login ^^^
 
-app.listen(3000, () => console.log('Server running on port 3000'));
+// app.listen(3000, () => console.log('Server running on port 3000'));
 
 app.get('/equipment/:id', async (req, res) => {
   console.log('hit equipment');
