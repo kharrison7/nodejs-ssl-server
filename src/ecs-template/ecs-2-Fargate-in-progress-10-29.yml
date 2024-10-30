@@ -7,30 +7,30 @@ Parameters:
     Default: ecr-9-12 # replace with ECR Repository Name
   VPCId:
     Type: String
-    Default: vpc-0e050bd47d6aa5448
+    Default: vpc-0a5c2862d8ae0fcb9
   Subnet1:
     Type: String
-    Default: subnet-0ba2f71e6f21019d1
+    Default: subnet-01b01a3ed90fb0287
   Subnet2:
     Type: String
-    Default: subnet-08c457dfacd8ab001
+    Default: subnet-0621393fd22a9c3a3
   SecurityGroup:
     Type: String
-    Default: sg-060c5c2866a559b0f
+    Default: sg-0a262902de0bd2eaf
   CognitoUserPoolName:
     Type: String
     Description: The name of the User Pool
-    Default: "JRS-Register-Dev"
+    Default: "JRS-Register-Dev-VPC"
   UserPoolClientName:
     Type: String
     Description: The name of the User Pool Client
-    Default: "JRS-Register-Dev"
+    Default: "JRS-Register-Dev-VPC"
 
 Resources:
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties: 
-      ClusterName: TestNodeCluster-v25 # update version as needed, search and replace
+      ClusterName: TestNodeCluster-v27 # update version as needed, search and replace
 
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
@@ -62,7 +62,7 @@ Resources:
   CloudWatchLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /ecs/test-node-service-autoscaling-v25
+      LogGroupName: /ecs/test-node-service-autoscaling-v27
       RetentionInDays: 7  # Set retention based on your needs
 
   ECSTaskDefinition:
@@ -76,7 +76,7 @@ Resources:
         - FARGATE
       ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
       ContainerDefinitions:
-        - Name: test-node-container-v25
+        - Name: test-node-container-v27
           Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${BaseECRImageName}:latest"
           Essential: true
           PortMappings:
@@ -89,7 +89,7 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: /ecs/test-node-service-autoscaling-v25
+              awslogs-group: /ecs/test-node-service-autoscaling-v27
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
 
@@ -101,7 +101,7 @@ Resources:
       - ECSLoadBalancerListener
       - CloudWatchLogGroup  # Ensure log group is created before service starts
     Properties:
-      ServiceName: test-node-service-v25
+      ServiceName: test-node-service-v27
       Cluster: !Ref ECSCluster
       TaskDefinition: !Ref ECSTaskDefinition
       DesiredCount: 2  # Number of containers to run
@@ -115,14 +115,14 @@ Resources:
           SecurityGroups:
             - !Ref SecurityGroup
       LoadBalancers:
-        - ContainerName: test-node-container-v25
+        - ContainerName: test-node-container-v27
           ContainerPort: 3000
           TargetGroupArn: !Ref ECSLoadBalancerTargetGroup
 
   ECSLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: test-node-load-balancer-v25
+      Name: test-node-load-balancer-v27
       Scheme: internet-facing
       Subnets:
         - !Ref Subnet1
@@ -144,7 +144,7 @@ Resources:
   ECSLoadBalancerTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: test-node-target-group-v25
+      Name: test-node-target-group-v27
       Port: 3000
       Protocol: HTTP
       VpcId: !Ref VPCId
@@ -196,7 +196,6 @@ Resources:
         - ALLOW_REFRESH_TOKEN_AUTH
       PreventUserExistenceErrors: ENABLED
       UserPoolId: !Ref UserPool
-
 Outputs:
   ECSServiceName:
     Description: Name of the ECS Service

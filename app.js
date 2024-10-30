@@ -33,7 +33,7 @@ app.use(function(req, res, next) {
 
 app.get('/', async (req, res) => {
   return res.status(200).send({
-    value: 'test get value 9-17 in app.js',
+    value: 'test get value 10-29 in app.js',
     message: 'can get',
   });
 });
