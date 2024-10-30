@@ -10,6 +10,19 @@ const version = '1.3.0';
 // 👇️ CORS https://bobbyhadz.com/blog/react-axios-network-error-stack-trace
 app.use(cors());
 
+app.use(express.json());
+
+// JRS-10145 - AWS Cognito Setup:
+const AWS = require('aws-sdk');
+const CognitoIdentityServiceProvider = AWS.CognitoIdentityServiceProvider;
+
+const cognito = new CognitoIdentityServiceProvider({
+  region: 'us-east-1',
+});
+
+const USER_POOL_ID = 'us-east-1_RustS1wQw';
+const CLIENT_ID = 'icr4m3mloikrk60io9hgdh9dr';
+
 app.use(function(req, res, next) {
     res.header('Access-Control-Allow-Origin', 'http://localhost:5173'); // for local running endpoint
     res.header(
@@ -37,6 +50,39 @@ app.get('/', async (req, res) => {
     message: 'can get',
   });
 });
+
+// JRS-10145 - AWS Cognito Setup for login vvv
+async function loginUser(username, password) {
+  const params = {
+    AuthFlow: 'USER_PASSWORD_AUTH',
+    ClientId: CLIENT_ID,
+    AuthParameters: {
+      USERNAME: username,
+      PASSWORD: password,
+    },
+  };
+
+  try {
+    const authResponse = await cognito.initiateAuth(params).promise();
+    return authResponse.AuthenticationResult; // contains IdToken, AccessToken, RefreshToken
+  } catch (error) {
+    console.error('Error authenticating user:', error);
+    throw error;
+  }
+}
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const authResult = await loginUser(username, password);
+    res.json(authResult);
+  } catch (error) {
+    res.status(401).json({ message: 'Authentication failed' });
+  }
+});
+// JRS-10145 - AWS Cognito Setup for Login ^^^
+
+app.listen(3000, () => console.log('Server running on port 3000'));
 
 app.get('/equipment/:id', async (req, res) => {
   console.log('hit equipment');
