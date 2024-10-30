@@ -46,7 +46,7 @@ app.use(function(req, res, next) {
 
 app.get('/', async (req, res) => {
   return res.status(200).send({
-    value: 'test get value 10-30 in app.js',
+    value: 'test get value 10-30 V2 in app.js',
     message: 'can get',
   });
 });
