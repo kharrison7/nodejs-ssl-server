@@ -46,7 +46,7 @@ app.use(function(req, res, next) {
 
 app.get('/', async (req, res) => {
   return res.status(200).send({
-    value: 'test get value 10-30 V2 in app.js',
+    value: 'test get value 10-30 V3 in app.js',
     message: 'can get',
   });
 });
@@ -81,8 +81,6 @@ app.post('/login', async (req, res) => {
   }
 });
 // JRS-10145 - AWS Cognito Setup for Login ^^^
-
-// app.listen(3000, () => console.log('Server running on port 3000'));
 
 app.get('/equipment/:id', async (req, res) => {
   console.log('hit equipment');
