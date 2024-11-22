@@ -1,0 +1,216 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS Cluster and Service using Fargate and ECR Image
+
+Parameters:
+  BaseECRImageName:
+    Type: String
+    Default: ecr-9-12 # replace with ECR Repository Name
+  VPCId:
+    Type: String
+    Default: vpc-0a5c2862d8ae0fcb9
+  Subnet1:
+    Type: String
+    Default: subnet-01b01a3ed90fb0287
+  Subnet2:
+    Type: String
+    Default: subnet-0621393fd22a9c3a3
+  SecurityGroup:
+    Type: String
+    Default: sg-0a262902de0bd2eaf
+  CognitoUserPoolName:
+    Type: String
+    Description: The name of the User Pool
+    Default: "JRS-Register-Dev-VPC"
+  UserPoolClientName:
+    Type: String
+    Description: The name of the User Pool Client
+    Default: "JRS-Register-Dev-VPC"
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties: 
+      ClusterName: TestNodeCluster-v27 # update version as needed, search and replace
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ecsTaskExecutionRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - ecr:*
+                  - cognito-idp:*
+                Resource: '*'
+
+  # Add CloudWatch Log Group to ensure it exists before the ECS task runs
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/test-node-service-autoscaling-v27
+      RetentionInDays: 7  # Set retention based on your needs
+
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: test-node-task
+      Cpu: '512'  # Update based on your requirement
+      Memory: '1024'  # Update based on your requirement
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: test-node-container-v27
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${BaseECRImageName}:latest"
+          Essential: true
+          PortMappings:
+            - ContainerPort: 3000
+          Memory: 512
+          Cpu: 256
+          Environment:   # Add environment variables if needed
+            - Name: NODE_ENV
+              Value: production
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/test-node-service-autoscaling-v27
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ECSCluster
+      - ECSLoadBalancer
+      - ECSLoadBalancerListener
+      - CloudWatchLogGroup  # Ensure log group is created before service starts
+    Properties:
+      ServiceName: test-node-service-v27
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref ECSTaskDefinition
+      DesiredCount: 2  # Number of containers to run
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref Subnet1
+            - !Ref Subnet2
+          SecurityGroups:
+            - !Ref SecurityGroup
+      LoadBalancers:
+        - ContainerName: test-node-container-v27
+          ContainerPort: 3000
+          TargetGroupArn: !Ref ECSLoadBalancerTargetGroup
+
+  ECSLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: test-node-load-balancer-v27
+      Scheme: internet-facing
+      Subnets:
+        - !Ref Subnet1
+        - !Ref Subnet2
+      SecurityGroups:
+        - !Ref SecurityGroup
+      Type: application
+
+  ECSLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ECSLoadBalancerTargetGroup
+      LoadBalancerArn: !Ref ECSLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  ECSLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: test-node-target-group-v27
+      Port: 3000
+      Protocol: HTTP
+      VpcId: !Ref VPCId
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      TargetType: ip
+  
+##########################################
+# Cognito Resources                      #
+##########################################
+
+  UserPool:
+    Type: "AWS::Cognito::UserPool"  # Specifies the AWS resource type for a Cognito User Pool.
+    Properties:
+      AccountRecoverySetting:       # Defines how account recovery works for users.
+        RecoveryMechanisms:
+          - Name: verified_email    # Recovery will use a verified email address.
+            Priority: 1             # Priority indicates the order in which recovery mechanisms are attempted.
+
+      AdminCreateUserConfig:        # Configuration for creating users in the User Pool.
+        AllowAdminCreateUserOnly: true  # Only admins can create new users. Self-registration is disabled.
+
+      UserPoolName: !Ref CognitoUserPoolName  # The name of the User Pool. The actual value is referenced from a parameter.
+
+      MfaConfiguration: "OFF"      # Specifies that Multi-Factor Authentication (MFA) is disabled for this User Pool.
+
+      Schema:                      # Defines the attributes of the User Pool schema.
+        - Name: email              # Specifies that email is a required attribute for users.
+          AttributeDataType: String  # Data type of the email attribute.
+          Mutable: false           # Email attribute cannot be changed once set.
+          Required: true           # Email is mandatory for each user.
+
+      Policies:                    # Configures User Pool policies, such as password requirements.
+        PasswordPolicy:
+          MinimumLength: 8         # Minimum password length is 8 characters.
+          RequireLowercase: True   # Password must contain at least one lowercase letter.
+          RequireNumbers: True     # Password must contain at least one number.
+          RequireSymbols: false    # Password does not need to contain special symbols.
+          RequireUppercase: True   # Password must contain at least one uppercase letter.
+
+      UsernameAttributes:          # Attributes users can use as their username during login.
+        - email                    # Users can log in using their email address.
+
+      UsernameConfiguration:
+        CaseSensitive: False       # Username comparisons are case-insensitive (e.g., "User" and "user" are treated the same).
+
+  # Definition of the Cognito User Pool Client
+  UserPoolClient:
+    Type: "AWS::Cognito::UserPoolClient"  # Specifies the AWS resource type for a User Pool Client.
+    Properties:
+      ClientName: !Ref UserPoolClientName # Name of the client, provided as a parameter.
+      GenerateSecret: false              # No client secret is generated (public clients like web apps typically don't use secrets).
+      ExplicitAuthFlows:                 # Defines the authentication flows supported by this client.
+        - ALLOW_CUSTOM_AUTH             # Custom authentication flow.
+        - ALLOW_USER_PASSWORD_AUTH      # Username and password authentication.
+        - ALLOW_USER_SRP_AUTH           # Secure Remote Password protocol for authentication.
+        - ALLOW_REFRESH_TOKEN_AUTH      # Allows refreshing tokens without requiring users to log in again.
+      PreventUserExistenceErrors: ENABLED  # Prevents errors that could expose whether a username exists.
+      UserPoolId: !Ref UserPool          # Associates this client with the previously defined User Pool.
+
+  # Outputs section for ECS-related resources (unrelated to Cognito but included in the template)
+  Outputs:
+    ECSServiceName:                    # Outputs the name of the ECS Service.
+      Description: Name of the ECS Service
+      Value: !Ref ECSService           # References the ECS Service resource.
+
+    LoadBalancerDNS:                   # Outputs the DNS name of the Load Balancer.
+      Description: DNS Name of the Load Balancer
+      Value: !GetAtt ECSLoadBalancer.DNSName  # Gets the DNSName attribute of the ECS Load Balancer.

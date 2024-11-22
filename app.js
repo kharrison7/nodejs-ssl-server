@@ -62,6 +62,7 @@ async function loginUser(username, password) {
     },
   };
 
+  console.log('loginUser params:', params);
   try {
     const authResponse = await cognito.initiateAuth(params).promise();
     return authResponse.AuthenticationResult; // contains IdToken, AccessToken, RefreshToken
