@@ -83,6 +83,19 @@ app.post('/login', async (req, res) => {
 });
 // JRS-10145 - AWS Cognito Setup for Login ^^^
 
+app.get('/logout', (req, res) => {
+  const USER_POOL_APP_CLIENT_ID_FOR_SESSION = '73v8k4dg1b59ha6dcs307i4oun';
+  res.clearCookie('AWSELBAuthSessionCookie', { path: '/' });
+  res.clearCookie(`CognitoIdentityServiceProvider.${USER_POOL_APP_CLIENT_ID_FOR_SESSION}.idToken`, { path: '/' });
+  res.clearCookie(`CognitoIdentityServiceProvider.${USER_POOL_APP_CLIENT_ID_FOR_SESSION}.accessToken`, { path: '/' });
+  res.clearCookie(`CognitoIdentityServiceProvider.${USER_POOL_APP_CLIENT_ID_FOR_SESSION}.refreshToken`, { path: '/' });
+
+  // Redirect to a logout confirmation page or home page
+  res.redirect('/logout-page');
+});
+// JRS-10145 - Session Cookie Logout setup
+
+
 app.get('/equipment/:id', async (req, res) => {
   console.log('hit equipment');
   console.log(req.params);
