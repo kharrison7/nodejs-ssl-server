@@ -1,0 +1,205 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS Cluster and Service using Fargate and ECR Image
+
+Parameters:
+  BaseECRImageName:
+    Type: String
+    Default: ecr-9-12 # replace with ECR Repository Name
+  VPCId:
+    Type: String
+    Default: vpc-0a5c2862d8ae0fcb9
+  Subnet1:
+    Type: String
+    Default: subnet-01b01a3ed90fb0287
+  Subnet2:
+    Type: String
+    Default: subnet-0621393fd22a9c3a3
+  SecurityGroup:
+    Type: String
+    Default: sg-0a262902de0bd2eaf
+  CognitoUserPoolName:
+    Type: String
+    Description: The name of the User Pool
+    Default: "JRS-Register-Dev-VPC"
+  UserPoolClientName:
+    Type: String
+    Description: The name of the User Pool Client
+    Default: "JRS-Register-Dev-VPC"
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties: 
+      ClusterName: TestNodeCluster-v27 # update version as needed, search and replace
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ecsTaskExecutionRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - ecr:*
+                  - cognito-idp:*
+                Resource: '*'
+
+  # Add CloudWatch Log Group to ensure it exists before the ECS task runs
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/test-node-service-autoscaling-v27
+      RetentionInDays: 7  # Set retention based on your needs
+
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: test-node-task
+      Cpu: '512'  # Update based on your requirement
+      Memory: '1024'  # Update based on your requirement
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: test-node-container-v27
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${BaseECRImageName}:latest"
+          Essential: true
+          PortMappings:
+            - ContainerPort: 3000
+          Memory: 512
+          Cpu: 256
+          Environment:   # Add environment variables if needed
+            - Name: NODE_ENV
+              Value: production
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/test-node-service-autoscaling-v27
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ECSCluster
+      - ECSLoadBalancer
+      - ECSLoadBalancerListener
+      - CloudWatchLogGroup  # Ensure log group is created before service starts
+    Properties:
+      ServiceName: test-node-service-v27
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref ECSTaskDefinition
+      DesiredCount: 2  # Number of containers to run
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref Subnet1
+            - !Ref Subnet2
+          SecurityGroups:
+            - !Ref SecurityGroup
+      LoadBalancers:
+        - ContainerName: test-node-container-v27
+          ContainerPort: 3000
+          TargetGroupArn: !Ref ECSLoadBalancerTargetGroup
+
+  ECSLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: test-node-load-balancer-v27
+      Scheme: internet-facing
+      Subnets:
+        - !Ref Subnet1
+        - !Ref Subnet2
+      SecurityGroups:
+        - !Ref SecurityGroup
+      Type: application
+
+  ECSLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ECSLoadBalancerTargetGroup
+      LoadBalancerArn: !Ref ECSLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  ECSLoadBalancerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: test-node-target-group-v27
+      Port: 3000
+      Protocol: HTTP
+      VpcId: !Ref VPCId
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+      TargetType: ip
+  
+##########################################
+# Cognito Resources                      #
+##########################################
+
+  UserPool:
+    Type: "AWS::Cognito::UserPool"
+    Properties:
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      UserPoolName: !Ref CognitoUserPoolName
+      MfaConfiguration: "OFF"
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: True
+          RequireNumbers: True
+          RequireSymbols: false
+          RequireUppercase: True
+      UsernameAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: False
+
+  UserPoolClient:
+    Type: "AWS::Cognito::UserPoolClient"
+    Properties:
+      ClientName: !Ref UserPoolClientName
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_CUSTOM_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      UserPoolId: !Ref UserPool
+Outputs:
+  ECSServiceName:
+    Description: Name of the ECS Service
+    Value: !Ref ECSService
+  LoadBalancerDNS:
+    Description: DNS Name of the Load Balancer
+    Value: !GetAtt ECSLoadBalancer.DNSName

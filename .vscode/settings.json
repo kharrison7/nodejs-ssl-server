@@ -1,0 +1,3 @@
+{
+    "terminal.integrated.shellArgs.osx": ["-l", "-i", "-c", "source ~/.bashrc; exec bash"],
+}
