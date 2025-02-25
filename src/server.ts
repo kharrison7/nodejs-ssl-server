@@ -43,6 +43,13 @@ fastify.get<{ Querystring: ProfileQuery }>('/profiles', async (request, reply) =
     }
 });
 
-fastify.listen({ port: 3000 }, () => console.log('Server running on port 3000'));
+fastify.get("/", async (_, reply) => {
+    return reply.send({ message: "Fastify is running!" });
+});
+  
 
+fastify.listen({ port: 3000, host: "0.0.0.0" }, () => {
+    console.log("Server running on port 3000");
+});
+  
 connectDB();
