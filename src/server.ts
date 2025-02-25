@@ -27,7 +27,7 @@ fastify.get<{ Querystring: ProfileQuery }>('/profiles', async (request, reply) =
           return reply.status(400).send({ error: "Name parameter is required" });
         }
     
-        const formattedName = name.replace(/_/g, " ");
+        const formattedName = name.replace(/_/g, "[ _]");
         console.log("Searching for name:", formattedName);
     
         const db = client.db("organization");
