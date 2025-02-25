@@ -22,21 +22,23 @@ interface ProfileQuery {
 
 fastify.get<{ Querystring: ProfileQuery }>('/profiles', async (request, reply) => {
     try {
-        const { name } = request.query;
-
+        const { name } = request.query as { name: string };
         if (!name) {
-            return reply.status(400).send({ error: 'Name query parameter is required' });
+          return reply.status(400).send({ error: "Name parameter is required" });
         }
-
-        const db = client.db('organization');
-        const collection = db.collection('profiles');
-        const profile = await collection.findOne({ name });
-
-        if (!profile) {
-            return reply.status(404).send({ error: 'Profile not found' });
-        }
-
-        return reply.send(profile);
+    
+        const formattedName = name.replace(/_/g, " ");
+        console.log("Searching for name:", formattedName);
+    
+        const db = client.db("organization");
+        const collection = db.collection("profiles");
+    
+        const result = await collection.findOne({
+          name: { $regex: `^${formattedName}$`, $options: "i" },
+        });
+    
+        console.log("MongoDB result:", result);
+        return reply.send(result ?? { error: "Profile not found" });
     } catch (error) {
         console.error('Error fetching profile:', error);
         return reply.status(500).send({ error: 'Internal Server Error' });
